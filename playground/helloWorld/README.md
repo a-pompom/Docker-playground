@@ -1,15 +1,44 @@
 # 概要
 
-Dockerの入門としてHello Worldの一連の流れを試します。
+Dockerの入門としてHello Worldの一連の流れを試してみる。
 
 ## ゴール
 
-`hello-world`イメージを題材に、イメージをもとにコンテナを作成→起動→削除するまでの流れを理解することを目指します。
+`hello-world`イメージを題材に、イメージをもとにコンテナを作成→起動→削除するまでの流れを理解することを目指す。
 
 ## 用語整理
 
 * イメージ: コンテナの元となるもの
 * コンテナ: イメージからつくりだされるもの 1つのプロセスで1つの環境を表現する
+
+## チートシート
+
+```bash
+# イメージを手に入れたい
+docker image pull [OPTIONS] NAME[:TAG|@DIGEST]
+# 例:
+$ docker image pull hello-world
+
+# イメージを一覧表示したい
+docker image ls [OPTIONS] [REPOSITORY[:TAG]]
+
+# イメージを削除したい
+docker image rm [OPTIONS] IMAGE [IMAGE...]
+
+# コンテナをつくりたい
+docker container create [OPTIONS] IMAGE [COMMAND] [ARG...]
+# 例:
+$ docker container create -it --name hello-world-container hello-world
+
+# コンテナを起動したい
+docker container start [OPTIONS] CONTAINER [CONTAINER...]
+
+# コンテナを削除したい
+docker container rm [OPTIONS] CONTAINER [CONTAINER...]
+
+```
+
+---
 
 ### イメージを手に入れたい
 
