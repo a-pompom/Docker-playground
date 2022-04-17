@@ -1,0 +1,36 @@
+# PHP-MariaDBコンテナを扱いたい
+services:
+  mariadb:
+    image: mariadb:latest
+    # volume mountでvolumeを設定
+    volumes:
+      - type: volume
+        source: mariadb
+        target: /var/lib/mysql
+    networks:
+      - php-mariadb
+    environment:
+      MARIADB_ROOT_PASSWORD: "mariadb"
+
+  php:
+    image: php:8.1-apache-buster
+    volumes:
+      - type: bind
+        source: "${PWD}/source"
+        target: "/var/www/html"
+    # コンテナ間通信ができるようにbridge ネットワークへ接続
+    networks:
+      - php-mariadb
+    ports:
+      - "8080:80"
+      # データベースが起動してから接続可能とする
+    depends_on:
+      - mariadb
+
+
+networks:
+  php-mariadb:
+    driver: bridge
+
+volumes:
+  mariadb:

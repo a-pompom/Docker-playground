@@ -1,0 +1,11 @@
+# PHPを動かしたい
+services:
+  php:
+    image: php:8.1-cli-buster
+    volumes:
+      - type: bind
+        source: "${PWD}/source"
+        target: /app
+    # stdin_open要素は標準入力を開くだけなので、PID=1のプロセスで必要にならない限り指定する必要はない
+    # 今回の場合、stdin_openをtrueとしておくと、PID=1のプロセスからPHPのREPLを操作できるようになる
+    tty: true

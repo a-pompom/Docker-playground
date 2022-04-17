@@ -1,0 +1,10 @@
+# PHP + Apacheを動かしたい
+services:
+  php:
+    image: php:8.1-apache-buster
+    volumes:
+      - type: bind
+        source: "${PWD}/source"
+        target: "/var/www/html"
+    ports:
+      - "8080:80"
