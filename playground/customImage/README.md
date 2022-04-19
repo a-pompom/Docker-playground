@@ -109,6 +109,66 @@ root@5c61bf5b7495:/# vim
 root@5c61bf5b7495:/# 
 ```
 
-## 設定値を変更したPHP + Apacheイメージをつくりたい
+## 設定値を変更したPHPイメージで現在日時を出力したい
+
+`php.ini`ファイルのタイムゾーンを変更したPHPイメージをつくり、現在日時を出力してみたい。
+
+#### 設定ファイルを取り出す
+
+一度PHPの公式イメージからコンテナを起動し、設定ファイルをホストへ取り出す。
+
+```bash
+$ docker container create -it --name php_cli php:8.1-cli-buster
+2cce1ab8c9dbf2754ee56d6b08f00f6597ad6c46bc0f56b40cb8f77456a35a93
+
+$ docker container start php_cli
+php_cli
+
+$ docker container exec -it php_cli bash
+
+# 設定ディレクトリはコンテナの$PHP_INI_DIR環境変数へ設定されている
+root@2cce1ab8c9db:/etc# cd "$PHP_INI_DIR"
+root@2cce1ab8c9db:/usr/local/etc/php# 
+
+root@2cce1ab8c9db:/usr/local/etc/php# ls
+conf.d  php.ini-development  php.ini-production
+
+# コンテナ→ホスト
+$ docker container cp php_cli:/usr/local/etc/php/php.ini-development $PWD
+$ ls
+php.ini-development
+```
+
+#### コンテナのファイルコピー(復習)
+
+コンテナのファイルをホストへコピーする方法を復習しておく。
+
+[参考](https://docs.docker.com/engine/reference/commandline/container_cp/)
+
+> 記法: `docker container cp [OPTIONS] CONTAINER:SRC_PATH DEST_PATH|-`
+
+#### timezoneを変更
+
+取り出した設定ファイルのうち、タイムゾーンのみを書き換えておく。
+
+```bash
+$ vim php.ini-development 
+
+$ cat ./php.ini-development | grep 'timezone' 
+; Defines the default timezone used by the date functions
+; https://php.net/date.timezone
+date.timezone = "Asia/Tokyo"
+```
+
+### Dockerfileをつくる
+
+### COPY
+
+### WORKDIR
+
+### CMD
+
+
+
 
 ## MariaDBの環境変数を設定したイメージをつくりたい
