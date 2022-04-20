@@ -154,21 +154,94 @@ php.ini-development
 ```bash
 $ vim php.ini-development 
 
+# date.timezoneが書き換わっていることを確認
 $ cat ./php.ini-development | grep 'timezone' 
 ; Defines the default timezone used by the date functions
 ; https://php.net/date.timezone
 date.timezone = "Asia/Tokyo"
 ```
 
-### Dockerfileをつくる
+### Dockerfileをつくりたい
+
+変更した設定ファイルを取り込み、現在日時をPHPコマンドを介して出力するよう動作するイメージをつくりたい。
 
 ### COPY
 
+ビルドコンテキスト内のファイルをコンテナの指定されたパスへコピー。
+
+[参考](https://docs.docker.com/engine/reference/builder/#copy)
+
+> 記法:
+
+```dockerfile
+COPY [--chown=<user>:<group>] <src>... <dest>
+COPY [--chown=<user>:<group>] ["<src>",... "<dest>"]
+```
+
+### VOLUME
+
+コンテナに対してマウントすべきディレクトリを明示。
+
+[参考](https://docs.docker.com/engine/reference/builder/#volume)
+
+> 記法: `VOLUME ["/data"]`
+
 ### WORKDIR
+
+WORKDIR命令以降のRUN, CMD, ENTRYPOINT, COPY, ADD命令のワーキングディレクトリを設定。
+
+[参考](https://docs.docker.com/engine/reference/builder/#workdir)
+
+> 記法: `WORKDIR /path/to/workdir`
 
 ### CMD
 
+コンテナで実行するデフォルトのPID=1のコマンドを設定。
 
+[参考](https://docs.docker.com/engine/reference/builder/#cmd)
 
+> 記法:
+
+```dockerfile
+#  (exec form, this is the preferred form)
+CMD ["executable","param1","param2"]
+#  (as default parameters to ENTRYPOINT)
+CMD ["param1","param2"]
+#  (shell form)
+CMD command param1 param2
+```
+
+#### イメージをつくってみる
+
+```bash
+$ docker image build -t php_setting .
+
+[+] Building 0.2s (8/8) FINISHED                                                                                                                                           
+ => [internal] load build definition from Dockerfile                                                                                                                  0.0s
+ => => transferring dockerfile: 172B                                                                                                                                  0.0s
+ => [internal] load .dockerignore                                                                                                                                     0.0s
+ => => transferring context: 2B                                                                                                                                       0.0s
+ => [internal] load metadata for docker.io/library/php:8.1-cli-buster                                                                                                 0.0s
+ => CACHED [1/3] FROM docker.io/library/php:8.1-cli-buster                                                                                                            0.0s
+ => [internal] load build context                                                                                                                                     0.0s
+ => => transferring context: 72.83kB                                                                                                                                  0.0s
+ => [2/3] COPY ./php.ini-development /usr/local/etc/php/php.ini                                                                                                       0.0s
+ => [3/3] WORKDIR /app                                                                                                                                                0.0s
+ => exporting to image                                                                                                                                                0.1s
+ => => exporting layers                                                                                                                                               0.0s
+ => => writing image sha256:b2ac92b1f47a3e09a799f8769af7430960a05a06634c35d49bf8d048548bbf0a                                                                          0.0s
+ => => naming to docker.io/library/php_setting 
+```
+
+#### 動作確認
+
+```bash
+$ docker container create -it --name php_setting --mount type=bind,source="${PWD}/source/",target="/app" --rm php_setting 
+acb4b15689b074ad86b62a395aac4e22c80f48da4a67b081edfe4d30a5e26b9e
+
+# PHPコマンドでnow.phpが実行され、現在日時が出力されたことを確認
+$ docker container start -a php_setting
+2022-04-20 21:12:55
+```
 
 ## MariaDBの環境変数を設定したイメージをつくりたい
