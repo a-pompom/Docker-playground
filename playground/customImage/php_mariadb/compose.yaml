@@ -1,0 +1,43 @@
+# PHP-MariaDBコンテナを扱いたい
+services:
+  mariadb:
+    # Dockerfileからimageを作成
+    build:
+      context: "${PWD}/mariadb"
+      dockerfile: "${PWD}/mariadb/Dockerfile"
+    # 環境変数を.envから注入
+    env_file: "${PWD}/.env"
+    # volume mountでvolumeを設定
+    volumes:
+      - type: volume
+        source: mariadb
+        target: /var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - php-mariadb
+  php:
+    # Dockerfileからimageを作成
+    build:
+      context: "${PWD}/php"
+      dockerfile: "${PWD}/php/Dockerfile"
+    # 環境変数を.envから注入
+    env_file: "${PWD}/.env"
+    volumes:
+      - type: bind
+        source: "${PWD}/php/source"
+        target: "/var/www/html"
+    # コンテナ間通信ができるようにbridge ネットワークへ接続
+    networks:
+      - php-mariadb
+    ports:
+      - "8080:80"
+      # データベースが起動してから接続可能とする
+    depends_on:
+      - mariadb
+
+networks:
+  php-mariadb:
+    driver: bridge
+volumes:
+  mariadb:
