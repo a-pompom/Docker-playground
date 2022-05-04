@@ -10,8 +10,6 @@ Dockerfileの基本的な命令の書き方を理解することを目指す。
 
 * context: Dockerfileからイメージをビルドするときに参照される環境 コンテキストはDockerfileのADD/COPY命令などで参照することができる
 
-## チートシート
-
 [参考](https://docs.docker.com/engine/reference/builder/)
 
 ## vimの入ったUbuntuイメージをつくりたい
@@ -196,6 +194,7 @@ COPY [--chown=<user>:<group>] ["<src>",... "<dest>"]
 ### VOLUME
 
 コンテナに対してマウントすべきディレクトリを明示。
+あくまで指針を示すに過ぎないため、ここに書いたからといって自動でマウントされるわけではないことに注意が必要。
 
 [参考](https://docs.docker.com/engine/reference/builder/#volume)
 
@@ -259,6 +258,8 @@ $ docker container start -a php_setting
 2022-04-20 21:12:55
 ```
 
+---
+
 ## Docker ComposeでPHP + MariaDBのコンテナを動かしたい
 
 総復習として、ある程度本番環境を想定したDockerコンテナをつくりたい。
@@ -269,11 +270,13 @@ $ docker container start -a php_setting
 
 * 文字コードなどの設定を設定ファイルから反映したい
 * アプリケーションからすぐに参照できるよう、ユーザ・データベースを自動でつくりたい
+→ 開発環境・本番環境それぞれでユーザやデータベースを手動で構築するのは非効率。環境変数をもとに自動で組み立てられるようにしたい。
 * セキュリティを考慮し、非rootユーザでコンテナを操作できるようにしたい
 
 #### 設定ファイルを追加したい
 
 カスタムの設定を適用したい場合は、設定ファイルを`/etc/mysql/conf.d`へ配置するとよいようだ。
+これは、上記ディレクトリへ配置した設定ファイルが大元の`my.cnf`から読み込まれることによる。
 
 [参考-Using a custom MariaDB configuration file](https://hub.docker.com/_/mariadb)
 
@@ -296,11 +299,12 @@ default-character-set=utf8mb4
 
 [参考-Initializing a fresh instance](https://hub.docker.com/_/mariadb)
 
-初期化スクリプトで参照するパスワードなどの情報は、後述する`.env`ファイルから参照。
+初期化スクリプトで参照するパスワードなどの情報は、`.env`ファイルから参照。
 
 ```bash
 #!/bin/bash
 # アプリケーションで操作するためのデータベース・ユーザを作成
+# その後、動作確認用にサンプルデータを挿入しておく
 mysql -uroot -p${MARIADB_ROOT_PASSWORD} -e "
 CREATE DATABASE ${DATABASE_NAME};
 CREATE USER '${DATABASE_USER}'@'%' IDENTIFIED BY '${DATABASE_PASSWORD}';
@@ -323,7 +327,7 @@ COPY "./conf/my.cnf" "/etc/mysql/conf.d/custom_my.cnf"
 # 初期化スクリプト
 COPY "./init.sh" "/docker-entrypoint-initdb.d/init.sh"
 
-# ユーザ設定
+# ユーザ設定 非rootユーザを作成し、データベースを操作できるようにしておく
 RUN adduser mariadb && chown -R mariadb /var/lib/mysql
 USER mariadb
 
@@ -333,9 +337,22 @@ EXPOSE 3306
 
 #### ENV
 
-TODO ENV命令の記法から
+環境変数を設定。
+ここにルートユーザのパスワードなど、セキュリティに関わる情報を記述するのは非推奨とされている。
+
+[参考](https://docs.docker.com/engine/reference/builder/#env)
+
+> 記法: `ENV <key>=<value> ...`
 
 #### USER
+
+各命令を実行するユーザを指定。
+ここで非rootユーザを設定しておくことで、rootユーザで直接コンテナを触らないようにしている。
+
+[参考](https://docs.docker.com/engine/reference/builder/#user)
+
+> 記法: `USER <user>[:<group>]`
+ 
 
 ### PHPのイメージをつくりたい
 
@@ -358,7 +375,7 @@ EXPOSE 8080
 
 ### compose.yaml
 
-カスタマイズしたDocker imageからコンテナをつくるためのcompose.yamlをつくる。
+カスタマイズしたMariaDB・PHPのDocker imageからコンテナをつくるためのcompose.yamlをつくる。
 
 ```yaml
 # PHP-MariaDBコンテナを扱いたい
@@ -410,9 +427,122 @@ volumes:
 
 #### build
 
+イメージのビルド設定を記述。今回の場合はDockerfileを利用した設定を追記する。
+
+[参考](https://docs.docker.com/compose/compose-file/build/)
+
+#### context
+
+Dockerfileのbuild contextを定義。
+
+[参考](https://docs.docker.com/compose/compose-file/build/#context-required)
+
+#### dockerfile
+
+Dockerfileのパスを定義。
+
 #### env_file
 
-#### 動作確認
+ファイルベースの環境変数定義を読み込む対象のパスを定義。
+
+[参考](https://docs.docker.com/compose/compose-file/#env_file)
+
+```bash
+# .env sample
+MARIADB_ROOT_PASSWORD=mariadb
+DATABASE_NAME=sample
+DATABASE_USER=blog
+DATABASE_PASSWORD=maria
+```
+
+### 動作確認
+
+最初に、確かめておきたい観点を挙げておく。
+
+* MariaDBコンテナにsampleデータベースがつくられているか
+* MariaDBコンテナのsampleデータベースを操作できるblogユーザがつくられているか
+* MariaDBコンテナでインタラクティブシェルを起動したとき、対象ユーザが非rootとなっているか
+
+* PHPコンテナでインタラクティブシェルを起動したとき、対象ユーザが非rootとなっているか
+* PHPコンテナへWeb上でアクセスしたとき、MariaDBコンテナのsampleデータベースに保存されたレコードが表示されるか
+
+上記の点が満たされているか、実際に動かしてみる。
+
+#### コンテナの作成・起動
+
+```bash
+$ docker compose up -d
+# 中略...
+[+] Running 5/5
+ ⠿ Network php_mariadb_php-mariadb  Created                                                                                                                           3.7s
+ ⠿ Network php_mariadb_default      Created                                                                                                                           3.7s
+ ⠿ Volume "php_mariadb_mariadb"     Created                                                                                                                           0.0s
+ ⠿ Container php_mariadb_mariadb_1  Started                                                                                                                           3.3s
+ ⠿ Container php_mariadb_php_1      Started 
+ 
+ $ docker compose ps
+NAME                    SERVICE             STATUS              PORTS
+php_mariadb_mariadb_1   mariadb             running             0.0.0.0:3306->3306/tcp, :::3306->3306/tcp
+php_mariadb_php_1       php                 running             0.0.0.0:8080->80/tcp, :::8080->80/tcp, 8080/tcp
+```
+
+コンテナが起動したことを確認。
+
+#### MariaDBコンテナ
+
+MariaDBコンテナを対象にインタラクティブシェルを起動してみる。
+
+```bash
+$ docker compose exec mariadb bash
+mariadb@eb119f6f496d:/$ 
+```
+
+非rootユーザで操作できたことを確認。
+
+```bash
+mariadb@eb119f6f496d:/$ mariadb -u blog -p
+Enter password: 
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+
+MariaDB [(none)]> use sample;
+Reading table information for completion of table and column names
+You can turn off this feature to get a quicker startup with -A
+
+Database changed
+MariaDB [sample]> select * from sample;
++--------------------+
+| text               |
++--------------------+
+| Hello From MariaDB |
++--------------------+
+1 row in set (0.001 sec)
+```
+
+sampleデータベースがつくられており、かつ当該データベースを操作できるblogユーザもあわせてつくられていたことを確認。
+
+#### PHPコンテナ
+
+PHPコンテナでも同様にインタラクティブシェルを起動してみる。
+
+```bash
+$ docker compose exec php bash
+php@b8a93eddecaf:/var/www/html$ php -m | grep 'pdo'
+pdo_mysql
+pdo_sqlite
+```
+
+非rootユーザが操作対象となっており、かつ`pdo_mysql`モジュールがインストールされていたことを確認。
+
+```bash
+$ curl localhost:8080/pdo_web.php
+Array
+(
+    [text] => Hello From MariaDB
+)
+```
+
+PHPコンテナへHTTPリクエストを送信すると、MariaDBコンテナのsampleデータベースへ登録されたレコードを読み出せたことを確認。
+
 
 #### 補足: 書いたDockerfileに問題がないかチェックしたい
 
