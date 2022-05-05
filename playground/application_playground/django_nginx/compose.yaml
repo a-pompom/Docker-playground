@@ -1,0 +1,22 @@
+services:
+  django:
+    build:
+      context: "${PWD}/django"
+      dockerfile: "${PWD}/django/Dockerfile"
+    env_file: "${PWD}/django/.env"
+    networks:
+      - django-nginx
+  nginx:
+    build:
+      context: "${PWD}/nginx"
+      dockerfile: "${PWD}/nginx/Dockerfile"
+    ports:
+      - "8080:8080"
+    networks:
+      - django-nginx
+    depends_on:
+      - django
+
+networks:
+  django-nginx:
+    driver: bridge
