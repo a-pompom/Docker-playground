@@ -1,0 +1,35 @@
+services:
+  mariadb:
+    build:
+      context: "${PWD}/mariadb"
+      dockerfile: "${PWD}/mariadb/Dockerfile"
+    env_file: "${PWD}/mariadb/.env"
+    ports:
+      - "3306:3306"
+    networks:
+      - django-mariadb
+    volumes:
+      - type: volume
+        source: mariadb
+        target: /var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "--silent" ]
+  django:
+    build:
+      context: "${PWD}/django"
+      dockerfile: "${PWD}/django/Dockerfile"
+    env_file: "${PWD}/django/.env"
+    ports:
+      - "8080:8000"
+    # デフォルトでは待機するのはコンテナの起動までで、MariaDBが起動する前に動き始めてしまうので起動判定を別途定義した
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - django-mariadb
+
+volumes:
+  mariadb:
+networks:
+  django-mariadb:
+    driver: bridge
